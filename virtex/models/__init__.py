@@ -3,6 +3,12 @@ from .captioning import (
     BidirectionalCaptioningModel,
     VirTexModel
 )
+from .mammo_captioning import (
+    MammoCaptioningModel,
+    MammoForwardCaptioningModel,
+    MammoBidirectionalCaptioningModel,
+    MammoVirTexModel
+)
 from .masked_lm import MaskedLMModel
 from .classification import (
     MultiLabelClassificationModel,
@@ -14,6 +20,10 @@ __all__ = [
     "VirTexModel",
     "BidirectionalCaptioningModel",
     "ForwardCaptioningModel",
+    "MammoCaptioningModel",
+    "MammoForwardCaptioningModel",
+    "MammoBidirectionalCaptioningModel",
+    "MammoVirTexModel",
     "MaskedLMModel",
     "MultiLabelClassificationModel",
     "TokenClassificationModel",

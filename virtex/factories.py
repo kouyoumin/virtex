@@ -147,9 +147,11 @@ class ImageTransformsFactory(Factory):
             alb.ColorJitter, brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1, p=0.8
         ),
         "horizontal_flip": partial(T.HorizontalFlip, p=0.5),
-
+        "elastic": partial(alb.ElasticTransform),
+        "resize": partial(alb.Resize, height=1120, width=896, always_apply=True),
         # Color normalization: whenever selected, always applied. This accepts images
         # in [0, 255], requires mean and std in [0, 1] and normalizes to `N(0, 1)`.
+        "randomgamma": partial(alb.RandomGamma, gamma_limit=(60, 160), always_apply=True),
         "normalize": partial(
             alb.Normalize, mean=T.IMAGENET_COLOR_MEAN, std=T.IMAGENET_COLOR_STD, p=1.0
         ),
@@ -191,6 +193,7 @@ class PretrainingDatasetFactory(Factory):
 
     PRODUCTS: Dict[str, Callable] = {
         "virtex": vdata.CaptioningDataset,
+        "mammo": vdata.KVGHCaptioningDataset,
         "bicaptioning": vdata.CaptioningDataset,
         "captioning": vdata.CaptioningDataset,
         "masked_lm": vdata.MaskedLmDataset,
@@ -215,7 +218,10 @@ class PretrainingDatasetFactory(Factory):
 
         _C = config
         # Every dataset needs these two args.
-        kwargs = {"data_root": _C.DATA.ROOT, "split": split}
+        if _C.MODEL.NAME == "mammo":
+            kwargs = {"data_root": _C.DATA.ROOT, "csv_path": _C.DATA.CSV_PATH}
+        else:
+            kwargs = {"data_root": _C.DATA.ROOT, "split": split}
 
         # Create a list of image transformations based on transform names.
         image_transform_list: List[Callable] = []
@@ -223,7 +229,8 @@ class PretrainingDatasetFactory(Factory):
         for name in getattr(_C.DATA, f"IMAGE_TRANSFORM_{split.upper()}"):
             # Pass dimensions if cropping / resizing, else rely on the defaults
             # as per `ImageTransformsFactory`.
-            if "resize" in name or "crop" in name:
+            print(_C.MODEL.NAME, (_C.MODEL.NAME != "mammo"))
+            if ("resize" in name or "crop" in name) and (_C.MODEL.NAME != "mammo"):
                 image_transform_list.append(
                     ImageTransformsFactory.create(name, _C.DATA.IMAGE_CROP_SIZE)
                 )
@@ -435,6 +442,7 @@ class PretrainingModelFactory(Factory):
     PRODUCTS: Dict[str, Callable] = {
         # First two are basically the same. Added for shorthand notation.
         "virtex": vmodels.VirTexModel,
+        "mammo": vmodels.MammoVirTexModel,
         "bicaptioning": vmodels.BidirectionalCaptioningModel,
         "captioning": vmodels.ForwardCaptioningModel,
         "masked_lm": vmodels.MaskedLMModel,
@@ -461,7 +469,7 @@ class PretrainingModelFactory(Factory):
 
         # Add model specific kwargs. Refer call signatures of specific models
         # for matching kwargs here.
-        if _C.MODEL.NAME in {"virtex", "captioning", "bicaptioning"}:
+        if _C.MODEL.NAME in {"virtex", "mammo", "captioning", "bicaptioning"}:
             kwargs = {
                 "sos_index": _C.DATA.SOS_INDEX,
                 "eos_index": _C.DATA.EOS_INDEX,
